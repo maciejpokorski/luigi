@@ -45,8 +45,14 @@ class LoadCSVToDB(luigi.Task):
         data = pandas.read_csv("employees.csv", names=colnames, parse_dates=['birth_date', 'hire_date'])
         data.to_sql('employees', self.engine, index=False, if_exists='append')
         
-    def exists(self):
+    def complete(self):
         query = "SELECT * FROM employees WHERE emp_no >= 500000"
-        with engine.connect() as conn:
+        with self.engine.connect() as conn:
             results = conn.execute(query).fetchall()
             return len(results) == 3
+
+class MasterTask(luigi.WrapperTask):
+    def requires(self):
+        yield S3Download()
+        yield UnZip()
+        yield LoadCSVToDB()
